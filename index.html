@@ -75,6 +75,8 @@
   <!-- 記帳 / 編輯共用表單 -->
   <div id="viewRec">
     <div id="editBanner" style="display:none;margin-top:10px;padding:10px 12px;border-radius:12px;background:#fff3cd;color:#664d03;font-size:15px">✏️ 編輯緊一筆紀錄，改完㩒「儲存修改」<button id="cancelEdit" type="button" style="float:right">取消</button></div>
+    <h2>日期 Date</h2>
+    <input id="date" type="date">
     <h2>Description</h2>
     <input id="desc" type="text" placeholder="例如 晚餐 六白亭">
     <h2>銀碼 Amount</h2>
@@ -200,9 +202,20 @@
   document.getElementById('tabSettle').onclick = function () { switchTab('Settle'); };
 
   var msg = document.getElementById('msg'), submitBtn = document.getElementById('submit');
+  function todayStr() {
+    var d = new Date();
+    return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+  }
+  function dateFromTs(ts) {
+    if (!ts) return todayStr();
+    var d = new Date(ts);
+    return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+  }
+  document.getElementById('date').value = todayStr();
   function resetForm() {
     state.editingId = null;
     document.body.classList.remove('editing');
+    document.getElementById('date').value = todayStr();
     document.getElementById('desc').value = ''; document.getElementById('amount').value = '';
     document.getElementById('lcShare').value = ''; document.getElementById('yanShare').value = '';
     state.paidBy = null; state.splitType = 'SHARE';
@@ -227,7 +240,8 @@
     }
     if (!ok) { msg.innerHTML = '<span class="err">仲欠資料，已用紅框標住</span>'; return; }
     submitBtn.disabled = true; msg.textContent = state.editingId ? '儲存緊…' : '入緊數…';
-    var params = { fn: state.editingId ? 'update' : 'add', code: savedCode, id: state.editingId || '', trip: state.trip, description: desc, amount: amt, currency: state.currency, paidBy: state.paidBy, splitType: state.splitType, lcShare: lcS, yanShare: yanS };
+    var dateVal = document.getElementById('date').value || todayStr();
+    var params = { fn: state.editingId ? 'update' : 'add', code: savedCode, id: state.editingId || '', trip: state.trip, date: dateVal, description: desc, amount: amt, currency: state.currency, paidBy: state.paidBy, splitType: state.splitType, lcShare: lcS, yanShare: yanS };
     jsonp(params, function (res) {
       if (res && res.ok) { msg.textContent = state.editingId ? '已修改 ✓' : '已記低 ✓ ' + desc + '／' + state.currency + ' ' + amt; var wasEdit = !!state.editingId; resetForm(); msg.textContent = wasEdit ? '已修改 ✓' : '已記低 ✓ ' + desc + '／' + amt; loadEntries(function () {}); }
       else if (res && res.error === 'code') lockWith('認證碼已失效，請重新輸入');
@@ -277,7 +291,7 @@
     state.entries.forEach(function (e) {
       var b = document.createElement('button'); b.type = 'button'; b.className = 'rowcard';
       var splitTxt = e.splitType === 'SHARE' ? '平均分 LC ' + e.lcShare + ' / YAN ' + e.yanShare : '個別 LC ' + e.lcShare + ' / YAN ' + e.yanShare;
-      b.innerHTML = '<span class="amt">' + money(e.currency, e.amount) + '</span>' + e.description + '<div class="sub">Paid by ' + e.paidBy + ' · ' + splitTxt + ' · 㩒入去 EDIT</div>';
+      b.innerHTML = '<span class="amt">' + money(e.currency, e.amount) + '</span>' + e.description + '<div class="sub">' + (e.date || dateFromTs(e.createdAt)) + ' · Paid by ' + e.paidBy + ' · ' + splitTxt + ' · 㩒入去 EDIT</div>';
       b.onclick = function () { startEdit(e); };
       box.appendChild(b);
     });
@@ -285,6 +299,7 @@
   function startEdit(e) {
     state.editingId = e.id; state.currency = e.currency; state.paidBy = e.paidBy; state.splitType = e.splitType;
     document.body.classList.add('editing');
+    document.getElementById('date').value = e.date || dateFromTs(e.createdAt);
     document.getElementById('desc').value = e.description; document.getElementById('amount').value = e.amount;
     document.getElementById('lcShare').value = e.lcShare; document.getElementById('yanShare').value = e.yanShare;
     document.getElementById('editBanner').style.display = ''; document.getElementById('deleteBtn').style.display = '';
