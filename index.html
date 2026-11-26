@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="旅行記帳">
+<link rel="apple-touch-icon" href="icon.png">
+<link rel="icon" type="image/png" href="icon.png">
+<title>旅行記帳</title>
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{font-family:-apple-system,"PingFang HK","Microsoft JhengHei",sans-serif;margin:0;padding:0 14px 110px;background:#f6f6f4;color:#1c1c1a}
+  @media(prefers-color-scheme:dark){body{background:#171716;color:#f2f2ef}.chip,.tab,.rowcard{background:#262624!important;border-color:#3d3d3a!important;color:#f2f2ef}input,select{background:#262624!important;color:#f2f2ef;border-color:#3d3d3a!important}}
+  .topband{background:#262624;color:#fff;margin:0 -14px;padding:16px 14px 12px}
+  .topband h1{font-size:20px;margin:0}
+  .topband p{margin:4px 0 0;opacity:.75;font-size:13px}
+  h2{font-size:17px;margin:18px 0 10px}
+  .grid{display:flex;flex-wrap:wrap;gap:9px}
+  .chip{flex:1 1 30%;min-height:52px;padding:10px 6px;font-size:15px;border:1.5px solid #cfcfc9;border-radius:12px;background:#fff;cursor:pointer}
+  .chip.sel{background:#1c6b3c!important;color:#fff;border-color:#1c6b3c;font-weight:700}
+  .miss{outline:2.5px solid #d43a2f;outline-offset:2px}
+  input,select{width:100%;font-size:18px;padding:13px;border:1.5px solid #cfcfc9;border-radius:12px;background:#fff}
+  input.small{font-size:16px;padding:11px}
+  .tabs{display:flex;gap:9px;margin:14px 0 4px}
+  .tab{flex:1;min-height:52px;font-size:17px;font-weight:700;border-radius:12px;border:1.5px solid #cfcfc9;background:#fff;color:inherit;cursor:pointer}
+  .tab.sel{background:#1c6b3c!important;color:#fff;border-color:#1c6b3c}
+  #bar{position:fixed;left:0;right:0;bottom:0;padding:12px 14px calc(12px + env(safe-area-inset-bottom));background:inherit}
+  .primary{width:100%;min-height:58px;font-size:19px;font-weight:700;border:none;border-radius:14px;background:#1c6b3c;color:#fff;cursor:pointer}
+  .primary:disabled{opacity:.55}
+  .secondary{width:100%;min-height:52px;margin-top:10px;font-size:17px;border-radius:12px;border:1.5px solid #1c6b3c;background:transparent;color:inherit;cursor:pointer}
+  .danger{width:100%;min-height:52px;margin-top:10px;font-size:17px;border-radius:12px;border:1.5px solid #d43a2f;background:transparent;color:#d43a2f;cursor:pointer}
+  #msg,#listMsg,#settleMsg{text-align:center;font-size:16px;margin-top:12px;min-height:22px}
+  .err{color:#d43a2f;font-weight:700}
+  .rowcard{width:100%;text-align:left;padding:12px 14px;margin-bottom:9px;font-size:15px;border:1.5px solid #cfcfc9;border-radius:12px;background:#fff;cursor:pointer}
+  .rowcard .amt{font-weight:700;float:right}
+  .rowcard .sub{opacity:.7;font-size:13px;margin-top:4px}
+  .pool{border:1.5px solid #cfcfc9;border-radius:12px;padding:12px;margin-bottom:9px}
+  .big{font-size:22px;font-weight:700}
+  #lock{position:fixed;inset:0;background:#f6f6f4;z-index:50;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px}
+  @media(prefers-color-scheme:dark){#lock{background:#171716}}
+  #lock h1{font-size:24px;margin-bottom:8px}#lock p{opacity:.7;margin:0 0 18px;font-size:15px}
+  #codeInput{max-width:320px;text-align:center;font-size:22px;letter-spacing:2px}
+  #unlockBtn{width:100%;max-width:320px;min-height:54px;margin-top:14px;font-size:18px;font-weight:700;border:none;border-radius:14px;background:#1c6b3c;color:#fff;cursor:pointer}
+  #lockMsg{margin-top:14px;font-size:16px;min-height:22px;text-align:center}
+</style>
+</head>
+<body>
+<div id="lock">
+  <h1>🔒 旅行記帳</h1>
+  <p>請輸入認證碼先可以記帳</p>
+  <input id="codeInput" type="text" placeholder="認證碼" autocomplete="off">
+  <button id="unlockBtn" type="button">進入</button>
+  <div id="lockMsg"></div>
+</div>
+
+<div id="app" style="display:none;">
+  <div class="topband"><h1>✈️ 旅行記帳</h1><p>Travel-Expense · LC / YAN 共同記帳</p></div>
+
+  <h2>今次旅行 Trip</h2>
+  <div class="grid" id="trips"></div>
+  <div style="display:flex;gap:9px;margin-top:9px">
+    <input id="newTrip" class="small" type="text" placeholder="新 Trip 例: 202612-KAGOSHIMA-FUKUOKA" style="flex:1">
+    <button id="addTripBtn" type="button" style="min-height:48px;padding:0 16px;border-radius:12px;border:1.5px solid #1c6b3c;background:transparent;color:inherit;cursor:pointer">＋ 加</button>
+  </div>
+
+  <div class="tabs">
+    <button class="tab sel" id="tabRec" type="button">記帳</button>
+    <button class="tab" id="tabList" type="button">明細</button>
+    <button class="tab" id="tabSettle" type="button">結算</button>
+  </div>
+
+  <!-- 記帳 / 編輯共用表單 -->
+  <div id="viewRec">
+    <div id="editBanner" style="display:none;margin-top:10px;padding:10px 12px;border-radius:12px;background:#fff3cd;color:#664d03;font-size:15px">✏️ 編輯緊一筆紀錄，改完㩒「儲存修改」<button id="cancelEdit" type="button" style="float:right">取消</button></div>
+    <h2>Description</h2>
+    <input id="desc" type="text" placeholder="例如 晚餐 六白亭">
+    <h2>銀碼 Amount</h2>
+    <input id="amount" type="number" inputmode="decimal" min="0" step="any" placeholder="例如 8500">
+    <div class="grid" id="currencies" style="margin-top:9px"></div>
+    <h2>Paid by</h2>
+    <div class="grid" id="paidBy"></div>
+    <h2>點分 Split</h2>
+    <div class="grid" id="splitTypes"></div>
+    <div id="customBox" style="display:none">
+      <h2>LC 分攤</h2>
+      <input id="lcShare" type="number" inputmode="decimal" min="0" step="any" placeholder="LC 應付">
+      <h2>YAN 分攤</h2>
+      <input id="yanShare" type="number" inputmode="decimal" min="0" step="any" placeholder="YAN 應付">
+      <p style="font-size:13px;opacity:.7">兩邊加埋要等於總銀碼；入完一邊會自動計埋另一邊。</p>
+    </div>
+    <div id="bar">
+      <button id="submit" class="primary">記低佢</button>
+      <button id="deleteBtn" class="danger" style="display:none">刪除呢筆</button>
+      <div id="msg"></div>
+    </div>
+  </div>
+
+  <div id="viewList" style="display:none">
+    <button id="syncBtn" class="primary" type="button" style="margin-top:14px">同步 Google 資料</button>
+    <div id="listMsg"></div>
+    <div id="listBox"></div>
+  </div>
+
+  <div id="viewSettle" style="display:none">
+    <button id="syncBtn2" class="primary" type="button" style="margin-top:14px">同步並計結算</button>
+    <div id="settleMsg"></div>
+    <div id="settleBox"></div>
+  </div>
+</div>
+
+<script>
+  // API_URL / API_URL_ALT are filled in after Apps Script deployment
+  var API_URL = 'https://script.google.com/macros/s/AKfycbyS8g_qvlEggLBQE8OzuHen8JtnELukEYF_99f868_tNgzogCchAJ4i05uSB0xkS2NA/exec';
+  var API_URL_ALT = 'https://script.google.com/a/*/macros/s/AKfycbyS8g_qvlEggLBQE8OzuHen8JtnELukEYF_99f868_tNgzogCchAJ4i05uSB0xkS2NA/exec';
+  var LS_CODE = 'travel_expense_code', LS_TRIP = 'travel_expense_trip';
+  var savedCode = ''; try { savedCode = localStorage.getItem(LS_CODE) || ''; } catch (e) {}
+  var PRESET_TRIPS = ['202612-KAGOSHIMA-FUKUOKA'];
+  var state = { trip: '', currency: 'JPY', paidBy: null, splitType: 'SHARE', editingId: null, entries: [], trips: PRESET_TRIPS.slice() };
+  try { state.trip = localStorage.getItem(LS_TRIP) || PRESET_TRIPS[0]; } catch (e) { state.trip = PRESET_TRIPS[0]; }
+
+  function jsonp(params, done) {
+    jsonpAttempt(API_URL, params, function (res) { if (res) { done(res); return; } jsonpAttempt(API_URL_ALT, params, done); });
+  }
+  function jsonpAttempt(baseUrl, params, done) {
+    var cbName = '__cb' + Date.now() + Math.floor(Math.random() * 100000);
+    var s = document.createElement('script'); var finished = false;
+    var timer = setTimeout(function () { finish(null); }, 15000);
+    function finish(res) { if (finished) return; finished = true; clearTimeout(timer); try { delete window[cbName]; } catch (e) { window[cbName] = undefined; } if (s.parentNode) s.parentNode.removeChild(s); done(res); }
+    window[cbName] = function (res) { finish(res); };
+    s.onerror = function () { finish(null); };
+    var qs = Object.keys(params).map(function (k) { return encodeURIComponent(k) + '=' + encodeURIComponent(params[k]); }).join('&');
+    s.src = baseUrl + '?' + qs + '&callback=' + cbName;
+    document.body.appendChild(s);
+  }
+
+  var lockEl = document.getElementById('lock'), appEl = document.getElementById('app'), lockMsg = document.getElementById('lockMsg'), unlockBtn = document.getElementById('unlockBtn'), codeInput = document.getElementById('codeInput');
+  function unlock() { lockEl.style.display = 'none'; appEl.style.display = ''; }
+  function lockWith(msg) { try { localStorage.removeItem(LS_CODE); } catch (e) {} savedCode = ''; appEl.style.display = 'none'; lockEl.style.display = 'flex'; unlockBtn.disabled = false; lockMsg.innerHTML = msg ? '<span class="err">' + msg + '</span>' : ''; }
+  function tryCode(code, silent) {
+    unlockBtn.disabled = true; if (!silent) lockMsg.textContent = '驗證緊…';
+    jsonp({ fn: 'check', code: code }, function (res) {
+      if (res && res.ok) { savedCode = code; try { localStorage.setItem(LS_CODE, code); } catch (e) {} unlock(); }
+      else if (res && res.error === 'code') lockWith('認證碼唔啱');
+      else if (silent) lockWith('');
+      else { unlockBtn.disabled = false; lockMsg.innerHTML = '<span class="err">網絡出問題，再試一次</span>'; }
+    });
+  }
+  unlockBtn.onclick = function () { var c = codeInput.value.trim(); if (!c) { lockMsg.innerHTML = '<span class="err">請輸入認證碼</span>'; return; } tryCode(c, false); };
+  codeInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') unlockBtn.onclick(); });
+  if (savedCode) tryCode(savedCode, true);
+
+  function chipGroup(boxId, items, get, set) {
+    var box = document.getElementById(boxId); box.innerHTML = '';
+    items.forEach(function (t) {
+      var b = document.createElement('button'); b.type = 'button'; b.className = 'chip' + (get() === t ? ' sel' : ''); b.textContent = t;
+      b.onclick = function () { set(t); chipGroup(boxId, items, get, set); onFormChange(); };
+      box.appendChild(b);
+    });
+  }
+  function renderTrips() {
+    var all = PRESET_TRIPS.slice();
+    state.trips.forEach(function (t) { if (all.indexOf(t) < 0) all.push(t); });
+    if (all.indexOf(state.trip) < 0 && state.trip) all.push(state.trip);
+    chipGroup('trips', all, function () { return state.trip; }, function (t) { state.trip = t; try { localStorage.setItem(LS_TRIP, t); } catch (e) {} });
+  }
+  function renderFormChips() {
+    chipGroup('currencies', ['JPY', 'HKD'], function () { return state.currency; }, function (t) { state.currency = t; });
+    chipGroup('paidBy', ['LC', 'YAN'], function () { return state.paidBy; }, function (t) { state.paidBy = t; });
+    chipGroup('splitTypes', ['SHARE 平均分', '個別分攤'], function () { return state.splitType === 'SHARE' ? 'SHARE 平均分' : '個別分攤'; }, function (t) { state.splitType = (t === 'SHARE 平均分') ? 'SHARE' : 'CUSTOM'; });
+  }
+  function onFormChange() { document.getElementById('customBox').style.display = state.splitType === 'CUSTOM' ? '' : 'none'; }
+  document.getElementById('addTripBtn').onclick = function () {
+    var v = document.getElementById('newTrip').value.trim().toUpperCase(); if (!v) return;
+    if (state.trips.indexOf(v) < 0) state.trips.push(v);
+    state.trip = v; try { localStorage.setItem(LS_TRIP, v); } catch (e) {}
+    document.getElementById('newTrip').value = ''; renderTrips();
+  };
+  document.getElementById('lcShare').addEventListener('input', function () {
+    var amt = parseFloat(document.getElementById('amount').value), v = parseFloat(this.value);
+    if (!isNaN(amt) && !isNaN(v)) document.getElementById('yanShare').value = Math.round((amt - v) * 100) / 100;
+  });
+  document.getElementById('yanShare').addEventListener('input', function () {
+    var amt = parseFloat(document.getElementById('amount').value), v = parseFloat(this.value);
+    if (!isNaN(amt) && !isNaN(v)) document.getElementById('lcShare').value = Math.round((amt - v) * 100) / 100;
+  });
+
+  function switchTab(which) {
+    ['Rec', 'List', 'Settle'].forEach(function (k) {
+      document.getElementById('tab' + k).classList.toggle('sel', k === which);
+      document.getElementById('view' + k).style.display = (k === which) ? '' : 'none';
+    });
+    document.getElementById('bar').style.display = (which === 'Rec') ? '' : 'none';
+  }
+  document.getElementById('tabRec').onclick = function () { switchTab('Rec'); };
+  document.getElementById('tabList').onclick = function () { switchTab('List'); };
+  document.getElementById('tabSettle').onclick = function () { switchTab('Settle'); };
+
+  var msg = document.getElementById('msg'), submitBtn = document.getElementById('submit');
+  function resetForm() {
+    state.editingId = null;
+    document.getElementById('desc').value = ''; document.getElementById('amount').value = '';
+    document.getElementById('lcShare').value = ''; document.getElementById('yanShare').value = '';
+    state.paidBy = null; state.splitType = 'SHARE';
+    document.getElementById('editBanner').style.display = 'none';
+    document.getElementById('deleteBtn').style.display = 'none';
+    submitBtn.textContent = '記低佢'; submitBtn.disabled = false; msg.textContent = '';
+    renderFormChips(); onFormChange();
+  }
+  document.getElementById('cancelEdit').onclick = resetForm;
+  submitBtn.onclick = function () {
+    var desc = document.getElementById('desc').value.trim();
+    var amt = document.getElementById('amount').value.trim();
+    var ok = true;
+    if (!state.trip) ok = false;
+    if (!desc) { document.getElementById('desc').classList.add('miss'); ok = false; } else document.getElementById('desc').classList.remove('miss');
+    if (!amt || isNaN(parseFloat(amt)) || parseFloat(amt) <= 0) { document.getElementById('amount').classList.add('miss'); ok = false; } else document.getElementById('amount').classList.remove('miss');
+    if (!state.paidBy) { document.getElementById('paidBy').classList.add('miss'); ok = false; } else document.getElementById('paidBy').classList.remove('miss');
+    var lcS = '', yanS = '';
+    if (state.splitType === 'CUSTOM') {
+      lcS = document.getElementById('lcShare').value.trim(); yanS = document.getElementById('yanShare').value.trim();
+      if (lcS === '' || yanS === '' || Math.abs(parseFloat(lcS) + parseFloat(yanS) - parseFloat(amt)) > 0.02) { msg.innerHTML = '<span class="err">個別分攤：LC＋YAN 要等於總銀碼</span>'; return; }
+    }
+    if (!ok) { msg.innerHTML = '<span class="err">仲欠資料，已用紅框標住</span>'; return; }
+    submitBtn.disabled = true; msg.textContent = state.editingId ? '儲存緊…' : '入緊數…';
+    var params = { fn: state.editingId ? 'update' : 'add', code: savedCode, id: state.editingId || '', trip: state.trip, description: desc, amount: amt, currency: state.currency, paidBy: state.paidBy, splitType: state.splitType, lcShare: lcS, yanShare: yanS };
+    jsonp(params, function (res) {
+      if (res && res.ok) { msg.textContent = state.editingId ? '已修改 ✓' : '已記低 ✓ ' + desc + '／' + state.currency + ' ' + amt; var wasEdit = !!state.editingId; resetForm(); msg.textContent = wasEdit ? '已修改 ✓' : '已記低 ✓ ' + desc + '／' + amt; }
+      else if (res && res.error === 'code') lockWith('認證碼已失效，請重新輸入');
+      else { msg.innerHTML = '<span class="err">傳送失敗，請再試一次</span>'; submitBtn.disabled = false; }
+    });
+  };
+  document.getElementById('deleteBtn').onclick = function () {
+    if (!state.editingId) return;
+    if (!confirm('確定刪除呢筆？')) return;
+    jsonp({ fn: 'delete', code: savedCode, id: state.editingId }, function (res) {
+      if (res && res.ok) { resetForm(); switchTab('List'); loadEntries(function () {}); }
+      else msg.innerHTML = '<span class="err">刪除失敗，請再試一次</span>';
+    });
+  };
+
+  function money(cur, n) { return cur + ' ' + Number(n).toLocaleString('en-HK', { minimumFractionDigits: 0, maximumFractionDigits: 2 }); }
+  function loadEntries(done) {
+    jsonp({ fn: 'list', code: savedCode, trip: state.trip }, function (res) {
+      if (res && res.ok) { state.entries = res.entries || []; if (res.trips) { state.trips = res.trips; renderTrips(); } done(true); }
+      else if (res && res.error === 'code') { lockWith('認證碼已失效，請重新輸入'); done(false); }
+      else done(false);
+    });
+  }
+  function renderList() {
+    var box = document.getElementById('listBox'); box.innerHTML = '';
+    if (!state.entries.length) { box.innerHTML = '<p style="opacity:.7">呢次旅行未有紀錄</p>'; return; }
+    state.entries.forEach(function (e) {
+      var b = document.createElement('button'); b.type = 'button'; b.className = 'rowcard';
+      var splitTxt = e.splitType === 'SHARE' ? '平均分 LC ' + e.lcShare + ' / YAN ' + e.yanShare : '個別 LC ' + e.lcShare + ' / YAN ' + e.yanShare;
+      b.innerHTML = '<span class="amt">' + money(e.currency, e.amount) + '</span>' + e.description + '<div class="sub">Paid by ' + e.paidBy + ' · ' + splitTxt + ' · 㩒入去 EDIT</div>';
+      b.onclick = function () { startEdit(e); };
+      box.appendChild(b);
+    });
+  }
+  function startEdit(e) {
+    state.editingId = e.id; state.currency = e.currency; state.paidBy = e.paidBy; state.splitType = e.splitType;
+    document.getElementById('desc').value = e.description; document.getElementById('amount').value = e.amount;
+    document.getElementById('lcShare').value = e.lcShare; document.getElementById('yanShare').value = e.yanShare;
+    document.getElementById('editBanner').style.display = ''; document.getElementById('deleteBtn').style.display = '';
+    submitBtn.textContent = '儲存修改'; renderFormChips(); onFormChange(); switchTab('Rec'); window.scrollTo(0, 0);
+  }
+  document.getElementById('syncBtn').onclick = function () {
+    var m = document.getElementById('listMsg'); m.textContent = '同步緊…';
+    loadEntries(function (ok) { m.textContent = ok ? '已同步 · ' + state.trip : '同步失敗'; if (ok) renderList(); });
+  };
+  document.getElementById('syncBtn2').onclick = function () {
+    var m = document.getElementById('settleMsg'); m.textContent = '同步緊…';
+    loadEntries(function (ok) { m.textContent = ok ? '已同步 · ' + state.trip : '同步失敗'; if (ok) renderSettle(); });
+  };
+  function renderSettle() {
+    var box = document.getElementById('settleBox'); box.innerHTML = '';
+    var byCur = {};
+    state.entries.forEach(function (e) {
+      if (!byCur[e.currency]) byCur[e.currency] = { lcPaid: 0, yanPaid: 0, lcShare: 0, yanShare: 0 };
+      var s = byCur[e.currency];
+      if (e.paidBy === 'LC') s.lcPaid += e.amount; else s.yanPaid += e.amount;
+      s.lcShare += e.lcShare; s.yanShare += e.yanShare;
+    });
+    var curs = Object.keys(byCur);
+    if (!curs.length) { box.innerHTML = '<p style="opacity:.7">未有紀錄可結算</p>'; return; }
+    curs.forEach(function (cur) {
+      var s = byCur[cur];
+      var net = Math.round((s.lcPaid - s.lcShare) * 100) / 100; // >0: LC 俾多咗, YAN 欠 LC
+      var verdict = net > 0.005 ? 'YAN 欠 LC ' + money(cur, net) : (net < -0.005 ? 'LC 欠 YAN ' + money(cur, -net) : '已清，冇邊個欠邊個');
+      box.innerHTML += '<div class="pool"><div class="big">' + cur + '</div>'
+        + '<div>LC 已付：' + money(cur, s.lcPaid) + ' · YAN 已付：' + money(cur, s.yanPaid) + '</div>'
+        + '<div>LC 應付份：' + money(cur, s.lcShare) + ' · YAN 應付份：' + money(cur, s.yanShare) + '</div>'
+        + '<div style="margin-top:8px;font-weight:700">結算：' + verdict + '</div></div>';
+    });
+  }
+
+  renderTrips(); renderFormChips(); onFormChange();
+</script>
+</body>
+</html>
