@@ -137,7 +137,7 @@
   }
 
   var lockEl = document.getElementById('lock'), appEl = document.getElementById('app'), lockMsg = document.getElementById('lockMsg'), unlockBtn = document.getElementById('unlockBtn'), codeInput = document.getElementById('codeInput');
-  function unlock() { lockEl.style.display = 'none'; appEl.style.display = ''; }
+  function unlock() { lockEl.style.display = 'none'; appEl.style.display = ''; showCached(); }
   function lockWith(msg) { try { localStorage.removeItem(LS_CODE); } catch (e) {} savedCode = ''; appEl.style.display = 'none'; lockEl.style.display = 'flex'; unlockBtn.disabled = false; lockMsg.innerHTML = msg ? '<span class="err">' + msg + '</span>' : ''; }
   function tryCode(code, silent) {
     unlockBtn.disabled = true; if (!silent) lockMsg.textContent = '驗證緊…';
@@ -164,7 +164,7 @@
     var all = PRESET_TRIPS.slice();
     state.trips.forEach(function (t) { if (all.indexOf(t) < 0) all.push(t); });
     if (all.indexOf(state.trip) < 0 && state.trip) all.push(state.trip);
-    chipGroup('trips', all, function () { return state.trip; }, function (t) { state.trip = t; try { localStorage.setItem(LS_TRIP, t); } catch (e) {} });
+    chipGroup('trips', all, function () { return state.trip; }, function (t) { state.trip = t; try { localStorage.setItem(LS_TRIP, t); } catch (e) {} state.entries = []; showCached(); });
   }
   function renderFormChips() {
     chipGroup('currencies', ['JPY', 'HKD'], function () { return state.currency; }, function (t) { state.currency = t; });
@@ -193,6 +193,7 @@
       document.getElementById('view' + k).style.display = (k === which) ? '' : 'none';
     });
     document.getElementById('bar').style.display = (which === 'Rec') ? '' : 'none';
+    if (which === 'List' || which === 'Settle') showCached();
   }
   document.getElementById('tabRec').onclick = function () { switchTab('Rec'); };
   document.getElementById('tabList').onclick = function () { switchTab('List'); };
@@ -228,7 +229,7 @@
     submitBtn.disabled = true; msg.textContent = state.editingId ? '儲存緊…' : '入緊數…';
     var params = { fn: state.editingId ? 'update' : 'add', code: savedCode, id: state.editingId || '', trip: state.trip, description: desc, amount: amt, currency: state.currency, paidBy: state.paidBy, splitType: state.splitType, lcShare: lcS, yanShare: yanS };
     jsonp(params, function (res) {
-      if (res && res.ok) { msg.textContent = state.editingId ? '已修改 ✓' : '已記低 ✓ ' + desc + '／' + state.currency + ' ' + amt; var wasEdit = !!state.editingId; resetForm(); msg.textContent = wasEdit ? '已修改 ✓' : '已記低 ✓ ' + desc + '／' + amt; }
+      if (res && res.ok) { msg.textContent = state.editingId ? '已修改 ✓' : '已記低 ✓ ' + desc + '／' + state.currency + ' ' + amt; var wasEdit = !!state.editingId; resetForm(); msg.textContent = wasEdit ? '已修改 ✓' : '已記低 ✓ ' + desc + '／' + amt; loadEntries(function () {}); }
       else if (res && res.error === 'code') lockWith('認證碼已失效，請重新輸入');
       else { msg.innerHTML = '<span class="err">傳送失敗，請再試一次</span>'; submitBtn.disabled = false; }
     });
@@ -237,15 +238,35 @@
     if (!state.editingId) return;
     if (!confirm('確定刪除呢筆？')) return;
     jsonp({ fn: 'delete', code: savedCode, id: state.editingId }, function (res) {
-      if (res && res.ok) { resetForm(); switchTab('List'); loadEntries(function () {}); }
+      if (res && res.ok) { resetForm(); switchTab('List'); loadEntries(function (ok) { if (ok) renderList(); }); }
       else msg.innerHTML = '<span class="err">刪除失敗，請再試一次</span>';
     });
   };
 
   function money(cur, n) { return cur + ' ' + Number(n).toLocaleString('en-HK', { minimumFractionDigits: 0, maximumFractionDigits: 2 }); }
+  function cacheKey() { return 'travel_expense_cache_' + state.trip; }
+  function saveCache() {
+    try { localStorage.setItem(cacheKey(), JSON.stringify({ ts: Date.now(), entries: state.entries, trips: state.trips })); } catch (e) {}
+  }
+  function readCache() {
+    try { var raw = localStorage.getItem(cacheKey()); return raw ? JSON.parse(raw) : null; } catch (e) { return null; }
+  }
+  function fmtSync(ts) {
+    var d = new Date(ts);
+    return d.getFullYear() + '/' + (d.getMonth() + 1) + '/' + d.getDate() + ' ' + ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
+  }
+  function showCached() {
+    var c = readCache(); if (!c) return;
+    state.entries = c.entries || [];
+    if (c.trips && c.trips.length) state.trips = c.trips;
+    var label = '上次同步：' + fmtSync(c.ts) + ' · ' + state.trip + '（㩒同步可更新）';
+    document.getElementById('listMsg').textContent = label;
+    document.getElementById('settleMsg').textContent = label;
+    renderList(); renderSettle();
+  }
   function loadEntries(done) {
     jsonp({ fn: 'list', code: savedCode, trip: state.trip }, function (res) {
-      if (res && res.ok) { state.entries = res.entries || []; if (res.trips) { state.trips = res.trips; renderTrips(); } done(true); }
+      if (res && res.ok) { state.entries = res.entries || []; if (res.trips) { state.trips = res.trips; renderTrips(); } saveCache(); done(true); }
       else if (res && res.error === 'code') { lockWith('認證碼已失效，請重新輸入'); done(false); }
       else done(false);
     });
@@ -271,11 +292,11 @@
   }
   document.getElementById('syncBtn').onclick = function () {
     var m = document.getElementById('listMsg'); m.textContent = '同步緊…';
-    loadEntries(function (ok) { m.textContent = ok ? '已同步 · ' + state.trip : '同步失敗'; if (ok) renderList(); });
+    loadEntries(function (ok) { m.textContent = ok ? '已同步：' + fmtSync(Date.now()) + ' · ' + state.trip : '同步失敗'; if (ok) renderList(); });
   };
   document.getElementById('syncBtn2').onclick = function () {
     var m = document.getElementById('settleMsg'); m.textContent = '同步緊…';
-    loadEntries(function (ok) { m.textContent = ok ? '已同步 · ' + state.trip : '同步失敗'; if (ok) renderSettle(); });
+    loadEntries(function (ok) { m.textContent = ok ? '已同步：' + fmtSync(Date.now()) + ' · ' + state.trip : '同步失敗'; if (ok) renderSettle(); });
   };
   function renderSettle() {
     var box = document.getElementById('settleBox'); box.innerHTML = '';
