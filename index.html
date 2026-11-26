@@ -11,8 +11,9 @@
 <title>旅行記帳</title>
 <style>
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-  body{font-family:-apple-system,"PingFang HK","Microsoft JhengHei",sans-serif;margin:0;padding:0 14px 110px;background:#f6f6f4;color:#1c1c1a}
-  @media(prefers-color-scheme:dark){body{background:#171716;color:#f2f2ef}.chip,.tab,.rowcard{background:#262624!important;border-color:#3d3d3a!important;color:#f2f2ef}input,select{background:#262624!important;color:#f2f2ef;border-color:#3d3d3a!important}}
+  body{font-family:-apple-system,"PingFang HK","Microsoft JhengHei",sans-serif;margin:0;padding:0 14px 180px;background:#f6f6f4;color:#1c1c1a}
+  body.editing{padding-bottom:320px}
+  @media(prefers-color-scheme:dark){body{background:#171716;color:#f2f2ef}.chip,.tab,.rowcard{background:#262624!important;border-color:#3d3d3a!important;color:#f2f2ef}input,select{background:#262624!important;color:#f2f2ef;border-color:#3d3d3a!important}#bar{background:#171716!important}}
   .topband{background:#262624;color:#fff;margin:0 -14px;padding:16px 14px 12px}
   .topband h1{font-size:20px;margin:0}
   .topband p{margin:4px 0 0;opacity:.75;font-size:13px}
@@ -26,7 +27,7 @@
   .tabs{display:flex;gap:9px;margin:14px 0 4px}
   .tab{flex:1;min-height:52px;font-size:17px;font-weight:700;border-radius:12px;border:1.5px solid #cfcfc9;background:#fff;color:inherit;cursor:pointer}
   .tab.sel{background:#1c6b3c!important;color:#fff;border-color:#1c6b3c}
-  #bar{position:fixed;left:0;right:0;bottom:0;padding:12px 14px calc(12px + env(safe-area-inset-bottom));background:inherit}
+  #bar{position:fixed;left:0;right:0;bottom:0;padding:12px 14px calc(12px + env(safe-area-inset-bottom));background:#f6f6f4;box-shadow:0 -6px 18px rgba(0,0,0,.18);z-index:20}
   .primary{width:100%;min-height:58px;font-size:19px;font-weight:700;border:none;border-radius:14px;background:#1c6b3c;color:#fff;cursor:pointer}
   .primary:disabled{opacity:.55}
   .secondary{width:100%;min-height:52px;margin-top:10px;font-size:17px;border-radius:12px;border:1.5px solid #1c6b3c;background:transparent;color:inherit;cursor:pointer}
@@ -200,6 +201,7 @@
   var msg = document.getElementById('msg'), submitBtn = document.getElementById('submit');
   function resetForm() {
     state.editingId = null;
+    document.body.classList.remove('editing');
     document.getElementById('desc').value = ''; document.getElementById('amount').value = '';
     document.getElementById('lcShare').value = ''; document.getElementById('yanShare').value = '';
     state.paidBy = null; state.splitType = 'SHARE';
@@ -261,6 +263,7 @@
   }
   function startEdit(e) {
     state.editingId = e.id; state.currency = e.currency; state.paidBy = e.paidBy; state.splitType = e.splitType;
+    document.body.classList.add('editing');
     document.getElementById('desc').value = e.description; document.getElementById('amount').value = e.amount;
     document.getElementById('lcShare').value = e.lcShare; document.getElementById('yanShare').value = e.yanShare;
     document.getElementById('editBanner').style.display = ''; document.getElementById('deleteBtn').style.display = '';
